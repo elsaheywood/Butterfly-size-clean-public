@@ -1,0 +1,119 @@
+---
+title: "Cleaning2_OUMNM"
+author: "Heywood et al."
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+OUMNH_measurements <- read_csv('../data/OUMNH/OUMNH_Measurements.csv' )
+```
+
+This document takes in the raw data and cleans up the location names. 
+
+## Correlation between measurements
+
+```{r}
+OUMNH_measurements %>%
+  group_by(Species, Sex) %>%
+  summarise( Corr_Length_Area = cor(  Wing_Length,Forewing_Area)) %>%
+  arrange(Corr_Length_Area) -> Corr_Length_Area
+  
+  Corr_Length_Area
+  
+  Corr_Length_Area$Corr_Length_Area %>% mean(na.rm=TRUE)
+    Corr_Length_Area$Corr_Length_Area %>% range(na.rm=TRUE)
+ 
+   Corr_Length_Area$Corr_Length_Area %>% quantile(na.rm = TRUE, probs = c(0.05, 0.95))
+
+```
+
+## Consolidating names
+
+```{r}
+NameTable <- read_csv('../data/names_table.csv')
+
+OUMNH_measurements %>%
+  filter( !is.na(Species)) %>%
+  left_join(NameTable, by = c('Species' = 'Elsa name'))-> OUMNH_measurements2
+```
+
+## Consolidating Locations
+
+```{r}
+### Temperature files (just for names)
+UA_temps <- read_csv( '../data/UA_Monthly_Temps_Long.csv') #  
+VC_temps <- read_csv('../data/VC_Monthly_Temps_Long.csv')
+```
+
+### Which names need manual fixing?
+```{r}
+Ox_Locs_To_Match <- unique(OUMNH_measurements2$Location)  
+
+VC_names <- sort(unique(VC_temps$VCNAME))
+UA_names <- unique(UA_temps$CTYUA23NM)
+
+NotInUA<- Ox_Locs_To_Match[!(Ox_Locs_To_Match %in% unique(UA_temps$CTYUA23NM))]
+NameNotInEither <- NotInUA[!(NotInUA %in% VC_names)]
+NameNotInEither
+```
+
+## Which type of location?
+
+```{R}
+OUMNH_measurements2 %>%
+  mutate( LocationType = ifelse(Location%in%VC_names, 'VC',
+                                ifelse( Location %in% UA_names, 
+                                        'UA', 'NeedsFixing' ))) -> OUMNH_measurements3
+```
+
+### Fixing unresolved locations
+
+```{r message=FALSE}
+## Swap in Best fit VC location for the iffy names
+
+NameResolver<- read_csv('../data/NameNotInEither_ResolverToVC.csv')
+
+OUMNH_measurements3 %>% 
+  left_join(NameResolver, by = 'Location') %>%
+  mutate(Location =  ifelse(is.na(VC_To_Use), Location, VC_To_Use), 
+         LocationType =  ifelse(is.na(VC_To_Use), LocationType, 'VC')) -> OUMNH_measurements4
+
+```
+
+
+## Other Tidying
+
+```{r}
+
+OUMNH_measurements4 %>%
+  mutate(  Month_num = match(str_to_sentence(Month),# reading mess of different capitalisations
+                             month.name)) %>%
+  filter( Year >= 1885) %>%
+  filter(!is.na(Month_num) ) %>% ## only keep those with months 
+  filter( Month_num >= 3) %>% ########### FILTER OUT ALL from Jan and Feb
+  filter( Location != 'Isles of Scilly') %>%
+  select(Individual ,  `Taxon name`,
+         Location,LocationType ,
+         Month = Month_num, Year,
+         Sex,
+         Wing_Length:Abdomen_Length ) -> OUMNH_measurements5
+
+
+```
+
+# Saving
+
+```{r}
+write_csv(OUMNH_measurements5, '../data/OUMNH/OUMNH_measurements_clean.csv')
+```
+
+# Session info
+
+```{r}
+sessionInfo()
+```
+
+
