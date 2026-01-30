@@ -36,4 +36,4 @@ Package details are available in `sessionInfo()` at the bottom of each correspon
 
 Processed, public, datasets from other authors (Wilson et al https://doi.org/10.1111/2041-210X.13844, Paterson et al. https://doi.org/10.5519/0038559, Met Office) are included in this repository for ease of reproduction. Any future use should cite the original sources.
 
-All our new code and  new measuemrnets can be re-used under Creative Commons 0, but if relevant please cite the main paper. 
+All our new code and  new measurements can be re-used under Creative Commons 0, but if relevant please cite the main paper. 
