@@ -170,7 +170,7 @@ NHM_tidy
 # Saving
 
 ```{r}
-write_csv(NHM_tidy, '../data/NHM_measurements_clean.csv')
+write_csv(NHM_tidy, '../data/NHM/NHM_measurements_clean.csv')
 ```
 
 # Session info

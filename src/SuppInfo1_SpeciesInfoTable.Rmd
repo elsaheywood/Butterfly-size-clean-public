@@ -24,9 +24,9 @@ Species_info <- left_join(read_csv('../data/brood_table.csv'),
           maximum_plausible,
           minimum_plausible)
 
-NHM_ForFitting <- read_csv(  '../data/NHM/NHM_for_models_monthly.csv')%>%
+NHM_ForFitting <- read_csv(  '../data/NHM_for_models_monthly.csv')%>%
   left_join(Species_info)
-OUM_ForFitting <- read_csv(  '../data/OUMNH/OUMNH_for_models_monthly.csv')
+OUM_ForFitting <- read_csv(  '../data/OUMNH_for_models_monthly.csv')
 SpeciesToInclude<-   unique(read_csv('../statsresults/NHM_Posterior_Summaries_M1.csv')$Sp)
 
 UKRedList <- read_csv('../data/ButterflyRedlistUK.csv')
@@ -36,7 +36,7 @@ specialism <- read_csv( '../data/specialism_with_nhm.csv')
 
 # Making Table 1
 
-Table summarising each species. Might end up in SI
+Table summarising each species. SI Table 1
 
 ```{r}
 
@@ -84,3 +84,26 @@ left_join(read_csv('../data/brood_table.csv'),
   knitr::kable()
 
 ```
+
+
+# Making Table 2
+
+Table of Year Coefficients vs Red listing
+
+```{r}
+PS_NHM<- read_csv('../statsresults/NHM_Posterior_Summaries_Spatial.csv')
+UKRedList <- read_csv('../data/ButterflyRedlistUK.csv')
+
+PS_NHM %>%
+  left_join(UKRedList, by =c( 'Sp'='Species') ) %>%
+  mutate(RedListListed = ifelse(is.na( `GB Red List category`),
+                                'Unlisted',
+                                'Listed')) %>% 
+
+  filter( variable == 'b_Temp' ) %>%
+  arrange(  RedListListed,mean)%>%
+  select(Species = Sp, RedListing = RedListListed,
+         `GB Red List category`, mean ,q5,q95) %>%
+  knitr::kable(digits = 4)
+```
+

@@ -20,7 +20,7 @@ library(ggcorrplot)
 ```{r}
 ## Summaries of posteriors of each species-level model
 PS_NHM<- read_csv('../statsresults/NHM_Posterior_Summaries_M1.csv')
-NHM_for_fitting <- read_csv('../data/NHM/NHM_for_models_monthly.csv')
+NHM_ForFitting <- read_csv('../data/NHM_for_models_monthly.csv')
 ```
 
 ```{r}
@@ -44,6 +44,7 @@ UKRedList <- read_csv('../data/ButterflyRedlistUK.csv')
 ### Prepping data
 
 ```{r}
+NHM_for_fitting <- read_csv('../data/NHM_for_models_monthly.csv')
 NHM_for_fitting %>%
   group_by(Sp)%>%
   summarise(MeanRightWing = signif(mean(Right_wing),4) ,
@@ -79,7 +80,7 @@ Trends %>%
          Generalist ) %>%
   as.matrix() %>%cor %>%
   ggcorrplot( type = "full",show.diag = FALSE,
-               show.legend = FALSE,
+              show.legend = FALSE,
               lab = TRUE) -> Predictor_CorrPlot
 
 Predictor_CorrPlot
@@ -112,16 +113,18 @@ Trends %>%
   select( Sp, Family, RedListListed, TrendSign, Generalist, MeanRightWing)->x
 
 FamilyCorrelates_a <- ggplot(x, aes( x = Family, fill = RedListListed))+
-  geom_bar()+theme_bw()+theme(legend.position="bottom")+
+  geom_bar(position =position_dodge( preserve = "single"))+
+  theme_bw()+theme(legend.position="bottom")+
   scale_fill_manual(values = c('darkred', 'lightgreen'), name = 'Red List:')+
   ylab('Count in Dataset')
 
 FamilyCorrelates_b <- ggplot(x, aes( x = Family, y = MeanRightWing))+
   geom_boxplot()+geom_point()+theme_bw()+theme(legend.position="bottom")+
-  ylab('Average Size')
+  ylab('Average Size\n(mm)')
 
 FamilyCorrelates_c <- ggplot(x, aes( x = Family, fill = Generalist))+
-  geom_bar()+theme_bw()+theme(legend.position="bottom")+
+  geom_bar(position =position_dodge( preserve = "single"))+
+  theme_bw()+theme(legend.position="bottom")+
   scale_fill_manual(values = c('blue','gold' ))+
   ylab('Count in Dataset')
 
@@ -143,7 +146,7 @@ plot_grid(Predictor_CorrPlot,
                      'c) Average Size by Family',
                      'd) Specialism by Family'),
           scale = 0.85  , hjust =0)
-          
+
 ggsave('../figs/SI_correlation_in_predictors.png',
        width = 12, height = 6, bg = 'white')
 

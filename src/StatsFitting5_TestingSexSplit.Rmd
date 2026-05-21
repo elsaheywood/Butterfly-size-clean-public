@@ -1,0 +1,470 @@
+---
+title: "StatsFitting5_InvestigationOfSexSplit"
+author: "Heywood et al."
+output: 
+  html_document: 
+    toc: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This script investigates fitting separate coefficients for each sex for each of the predictors (near-equivalent to having a sex-interaction term, rather than just a sex-offset.) 
+
+Just looking here at the NHM specimens, rather than the much smaller Oxford dataset. 
+
+```{r message = FALSE}
+library(tidyverse)
+library(brms)
+library(posterior)
+library(forcats)
+library(bayesplot)
+library(cowplot)
+library(ggrepel)
+```
+
+# Creating sex specific datasets
+
+NB this will exclude 'undetermined' specimens!
+
+```{r}
+NHM_ForFitting <- read_csv(  '../data/NHM_for_models_monthly.csv')
+NHM_males <- NHM_ForFitting %>% filter(Sex == "male")
+NHM_females <- NHM_ForFitting %>% filter(Sex == "female")
+```
+
+Including only those species we have at least 50 observations of a sex. 
+
+```{r}
+TableOfModels_NHM_males <- NHM_males %>%
+  count(Sp) %>%
+  filter(n > 50)
+
+TableOfModels_NHM_females <- NHM_females %>%
+  count(Sp) %>%
+  filter(n > 50)
+```
+
+# Model Fitting
+
+## Males
+
+```{r eval = FALSE}
+Set_males = paste0('Sp.', TableOfModels_NHM_males$Sp, "_males")
+
+CoreModel_males <- NHM_males %>%
+  filter(Sp == TableOfModels_NHM_males$Sp[1]) %>%
+  brm(log(Right_wing) ~ YearRescale + Temp + Latitude,
+      data = ., refresh = 0)
+
+for(i in 1:nrow(TableOfModels_NHM_males)){
+  print(Set_males[i])
+  NHM_males %>% filter(Sp == TableOfModels_NHM_males$Sp[i]) -> batchDATA
+  update(CoreModel_males, newdata = batchDATA, refresh = 0) -> MODEL_FIT
+  save(MODEL_FIT,
+       file = paste('../NHM_modelfitsM1_SexSplitmales/', Set_males[i]))
+}
+```
+
+## Females
+
+```{r eval = FALSE}
+Set_females = paste0('Sp.', TableOfModels_NHM_females$Sp, "_females")
+
+CoreModel_females <- NHM_females %>%
+  filter(Sp == TableOfModels_NHM_females$Sp[1]) %>%
+  brm(log(Right_wing) ~ YearRescale + Temp + Latitude,
+      data = ., refresh = 0)
+
+for(i in 1:nrow(TableOfModels_NHM_females)){
+  print(Set_females[i])
+  NHM_females %>%filter(Sp == TableOfModels_NHM_females$Sp[i]) -> batchDATA
+  update(CoreModel_females, newdata = batchDATA, refresh = 0) -> MODEL_FIT
+  save(MODEL_FIT,
+       file = paste('../NHM_modelfitsM1_SexSplitfemales/', Set_females[i]))
+}
+```
+
+# Posterior summaries
+
+## Male 
+
+```{r eval = FALSE}
+map_df(1:nrow(TableOfModels_NHM_males), function(i){
+  
+  load(file = paste('../NHM_modelfitsM1_SexSplitmales/', Set_males[i]))
+  
+  MODEL_FIT %>%
+    as_draws_array() %>%
+    summarise_draws("mean","median","sd","mad","quantile2",
+                    ~quantile2(.x, probs =c(0.025,0.167,0.833, 0.975))) -> Fit_df
+  
+  Fit_df$Sp = TableOfModels_NHM_males$Sp[i]
+  Fit_df$Sex = "male"
+  
+  return(Fit_df)
+  
+}) -> Posterior_Summaries_NHM_males
+
+write_csv(Posterior_Summaries_NHM_males,
+          '../statsresults/NHM_Posterior_Summaries_M1_males.csv')
+```
+
+## Female
+```{r eval = FALSE}
+map_df(1:nrow(TableOfModels_NHM_females), function(i){
+  
+  load(file = paste('../NHM_modelfitsM1_SexSplitfemales/', Set_females[i]))
+  
+  MODEL_FIT %>%
+    as_draws_array() %>%
+    summarise_draws("mean","median","sd","mad","quantile2",
+                    ~quantile2(.x, probs = c(0.025,0.167,0.833, 0.975))) -> Fit_df
+  
+  Fit_df$Sp = TableOfModels_NHM_females$Sp[i]
+  Fit_df$Sex = "female"
+  
+  return(Fit_df)
+  
+}) -> Posterior_Summaries_NHM_females
+
+write_csv(Posterior_Summaries_NHM_females,
+          '../statsresults/NHM_Posterior_Summaries_M1_females.csv')
+```
+
+## Joining
+```{r eval = FALSE}
+bind_rows(Posterior_Summaries_NHM_males,
+          Posterior_Summaries_NHM_females) ->
+  Posterior_Summaries_NHM_all
+
+write_csv(Posterior_Summaries_NHM_all,
+          '../statsresults/NHM_Posterior_Summaries_M1_SexSplitCombined.csv')
+```
+
+##  Load posterior summaries
+```{r}
+PS_NHM_Split <- read_csv('../statsresults/NHM_Posterior_Summaries_M1_SexSplitCombined.csv') %>%
+  mutate(Sex = factor(Sex))
+```
+
+# Direct Parameter Comparisons
+
+```{r}
+full_join(TableOfModels_NHM_females,
+          TableOfModels_NHM_males, by = 'Sp') -> JointSplitcounts
+
+## Which Species not with both
+JointSplitcounts %>%
+  filter( is.na(n.x)|is.na(n.y))
+
+## Which Species not with both
+JointSplitcounts %>%
+  filter( !(is.na(n.x)|is.na(n.y))) -> SplitSexSpTable
+
+#### Compare (subtract) posteriors for each species:
+
+map_df(1:nrow(SplitSexSpTable), function(i){
+  load(file = paste0('../NHM_modelfitsM1_SexSplitmales/Sp.', SplitSexSpTable$Sp[i],  '_males'  ))
+  as_draws_array(MODEL_FIT) -> Male_Draws
+  
+  load(file = paste0('../NHM_modelfitsM1_SexSplitfemales/Sp.', SplitSexSpTable$Sp[i],  '_females'  ))
+  as_draws_array(MODEL_FIT) -> Female_Draws
+  
+  (Male_Draws-Female_Draws) %>%
+    summarise_draws("mean","median","sd","mad","quantile2",
+                    ~quantile2(.x, probs =c(0.025,0.167,
+                                            0.833, 0.975))) -> Draws_Difference_DF
+  Draws_Difference_DF$Sp = SplitSexSpTable$Sp[i]
+  return(Draws_Difference_DF)
+}) -> Posterior_Summaries_NHM_SexDiff
+
+
+Posterior_Summaries_NHM_SexDiff %>%
+  filter(variable %in% c('b_Temp',
+                         'b_YearRescale',
+                         'b_Latitude')) %>%
+  select(variable          ,  mean,Sp,q2.5, q97.5  ) %>% 
+  mutate( ConfSignifDiff =   sign(q2.5) ==   sign(q97.5)) -> PosteriorDiffs 
+
+PosteriorDiffs  %>%
+  filter( ConfSignifDiff) %>%
+  arrange(variable, abs(mean))%>%
+  as.data.frame
+
+
+PosteriorDiffs %>%
+  filter( ConfSignifDiff) %>%
+  distinct(Sp)
+```
+
+# Cross-species impact of predictors: 
+
+## Data loading
+```{r}
+read_csv('../data/brood_table.csv') %>%
+  filter(Include == 'TRUE' )%>%
+  select(Sp = `Taxon name` ,Family )-> SpFamily
+
+## Butterfly Red List https://resjournals.onlinelibrary.wiley.com/doi/10.1111/icad.12582
+UKRedList <- read_csv('../data/ButterflyRedlistUK.csv')
+
+### Sizes
+NHM_ForFitting %>%
+  group_by(Sp) %>%
+  summarise( MeanRightWing = signif(mean(Right_wing), 4)) -> SpeciesSizeProps
+
+```
+
+## Prepping data
+```{r}
+PS_NHM_Split %>%
+  left_join(SpFamily) %>%
+  distinct(Sp, Family ) %>%
+  arrange(Sp) -> OrderTable
+ORDER_f2 <-pluck(OrderTable,'Sp')
+
+PS_NHM_Split %>%
+  mutate(Sp = factor(Sp, levels = ORDER_f2)) %>%
+  # mutate( q2.5 = if_else(variable == 'b_Latitude' & Sp == 'Melitaea cinxia', -Inf, q2.5), # Truncate extreme uncertainty (symmetric!)
+  #         q97.5 = if_else(variable == 'b_Latitude' & Sp == 'Melitaea cinxia', Inf, q97.5)) %>%
+  left_join(SpFamily) %>%
+  left_join(UKRedList, by = c('Sp' = 'Species')) %>%
+  filter(variable %in% c('b_Temp',
+                         'b_YearRescale',
+                         'b_Latitude')) %>%
+  mutate( Response = case_match(variable,
+                                'b_Temp' ~ 'b. Temperature',
+                                'b_YearRescale' ~ 'c. Year',
+                                'b_Latitude' ~ 'a. Latitude'),
+          Sex = factor(Sex)  ) -> DataForMainNHMPlot_SplitSex
+
+### Checking extreme values
+DataForMainNHMPlot_SplitSex %>%
+  filter(Sp == "Melitaea cinxia", variable == "b_Latitude")
+```
+
+```{r message=FALSE, warning=FALSE}
+DataForMainNHMPlot_SplitSex %>%
+  ggplot(aes( y = fct_rev(Sp),  x = mean, col = Sex )) +
+  geom_errorbarh(aes(xmin = q2.5, xmax = q97.5, group = Sex),                            #95% interval not 90
+                 linewidth = 0.5, height = 0, col = 'grey',
+                 position =  position_dodge(width =0.5)) +
+  geom_errorbarh(aes(xmin = q5, xmax = q95, group = Sex ),
+                 linewidth = 1, height = 0, col = 'grey',
+                 position = position_dodge(width =0.5)) +
+  geom_errorbarh(aes(xmin = q16.7 , xmax = q83.3, group = Sex ),
+                 linewidth = 2, height = 0, col = 'grey',
+                 position = position_dodge(width =0.5)) +
+  geom_point(aes(col = Sex), shape = 16,
+             position = position_dodge(width =0.5)) +
+  geom_vline(xintercept = 0) +
+  facet_grid(Family ~ Response,
+             scales = 'free',
+             space = "free_y") +
+  theme_bw() +
+  ylab('') +
+  xlab('Fitted Coefficient') +
+  ggtitle('Species-level responses when split by sex (NHM)') +
+  theme( strip.text.y.right = element_text(angle = 0),
+         axis.text.y = element_text(face = "italic"),
+         strip.background = element_rect(fill = 'grey80', colour = NA),
+         legend.position = "bottom" )
+
+ggsave('../figs/NHM_Monthly_MainSpResults_SplitSexSp.png',
+       width = 10, height = 9, bg = 'white')
+
+ggsave('../figs/NHM_Monthly_MainSpResults_SplitSexSp.pdf',
+       width = 10, height = 9, bg = 'white')
+```
+
+# Plotting male and female coefficients against each other
+```{r}
+SexComparison <- PS_NHM_Split %>%
+  filter(variable %in% c("b_Temp", "b_YearRescale", "b_Latitude")) %>%
+  select(Sp, Sex, variable, mean, q2.5, q97.5) %>%
+  pivot_wider( names_from = Sex,
+               values_from = c(mean, q2.5, q97.5),
+               names_sep = "_") %>%
+  filter(!is.na(mean_male), !is.na(mean_female)) %>%
+  mutate(male_confident = sign(q2.5_male) == sign(q97.5_male),
+         female_confident = sign(q2.5_female) == sign(q97.5_female),
+         difference_type = (sign(mean_male) != sign(mean_female)) &
+           (male_confident | female_confident))
+
+SexComparison %>%
+  filter(!is.na(mean_male), !is.na(mean_female),Sp != "Melitaea cinxia") %>% # Removing Glanville Fritillary
+  ggplot(aes(x = mean_male, y = mean_female)) +
+  geom_errorbar(aes(ymin = q2.5_female, ymax = q97.5_female), width = 0) +
+  geom_errorbarh(aes(xmin = q2.5_male, xmax = q97.5_male), height = 0) +
+  geom_abline(slope = 1, intercept = 0, colour = "grey50") +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  geom_point( size = 1, col = 'red') +
+  facet_wrap(~variable, scales ='free') +
+  theme_bw() +
+  theme(aspect.ratio = 1)+
+  labs( x = "Male coefficient",
+        y = "Female coefficient") 
+
+ggsave('../figs/DirectCompareCoefsBySex.png',
+       width = 10, height = 5, bg = 'white')
+
+```
+
+#  Repeating Cross-species Analyses without apparently diverging species. 
+
+```{r}
+#Build cross-species dataset
+Trends <- read_csv('../statsresults/NHM_Posterior_Summaries_Spatial.csv') %>%
+  left_join(UKRedList, by = c('Sp' = 'Species')) %>%
+  left_join(SpeciesSizeProps) %>%
+  left_join(SpFamily) %>%
+  mutate(RedListListed = ifelse(is.na(`GB Red List category`),
+                                'Unlisted', 'Listed')) %>%
+  filter(variable %in% c('b_Temp', 'b_YearRescale')) %>%
+  select(variable, Sp, Family,
+         RedListListed,   MeanRightWing,
+         mean,sd)
+
+```
+
+## Remove species coefficients for cross-species analyses just for particular analyses.
+
+```{r}
+PosteriorDiffs  %>%
+  filter( ConfSignifDiff) %>%
+  arrange(variable, abs(mean))%>%
+  as.data.frame
+
+ToRemove = PosteriorDiffs  %>%
+  filter( ConfSignifDiff) %>%
+  select( variable,  Sp , ConfSignifDiff)
+
+PS_NHM_WO_SplitSexSp<- Trends %>%
+  left_join(ToRemove, by = join_by(variable, Sp)) %>%
+  filter( is.na(ConfSignifDiff)  )  # filter out 14 species x variable terms that were confidently different between species
+
+```
+
+## Year coefficient and Size
+
+```{r eval = FALSE}
+PS_NHM_WO_SplitSexSp %>%
+  filter( variable == 'b_YearRescale' ) %>%
+  brm( mean|mi(sd)  ~  MeanRightWing ,
+       data = .) -> bYear_model_NHM_Size_WO_SplitSexSp
+save(bYear_model_NHM_Size_WO_SplitSexSp, file = '../TopLevelModelFits/bYear_model_NHM_Size_WO_SplitSexSp' )
+```
+
+```{r}
+load('../TopLevelModelFits/bYear_model_NHM_Size_SPATIAL')  # Called 'MS'
+load('../TopLevelModelFits/bYear_model_NHM_Size_WO_SplitSexSp')
+
+#original (all 52 species)
+nobs(MS)
+posterior_summary(MS)["b_MeanRightWing", ]
+
+#filtered (43 Species )
+nobs(bYear_model_NHM_Size_WO_SplitSexSp)
+posterior_summary(bYear_model_NHM_Size_WO_SplitSexSp)["b_MeanRightWing", ]
+```
+
+## Recreating 4a
+
+```{r}
+Orig_sum_4a <-  as.data.frame(posterior_summary(MS))
+Filt_sum_4a <-  as.data.frame(posterior_summary(bYear_model_NHM_Size_WO_SplitSexSp))
+FillCols = c( 'lightgreen',"blue",'orange',"gold", 'darkgrey', '#800020')
+LineCols = c( 'darkgreen',"blue",  'orange', "black", 'black', '#800020')
+
+Trends %>%
+  left_join(ToRemove, by = join_by(variable, Sp)) %>%
+  mutate( ConfSignifDiff = !is.na(ConfSignifDiff)) %>%
+  filter(variable == "b_YearRescale") %>%
+  ggplot(aes(x = MeanRightWing, y = mean)) +
+  geom_point(aes(col = Family, fill = Family, shape =ConfSignifDiff)) +
+ # geom_point(aes(shape =ConfSignifDiff), col = 'black', size = 0.1, da) +
+  geom_abline(intercept = Orig_sum_4a$Estimate[1],    ## Original Line
+              slope = Orig_sum_4a$Estimate[2], col = 'red')+
+  geom_abline(intercept = Filt_sum_4a$Estimate[1],    # Split species removed
+              slope = Filt_sum_4a$Estimate[2])+
+  scale_shape_manual(values = c( 21,4), name = 'Confident Difference\nBetween Sexes')+
+    scale_colour_manual(values = LineCols )+
+  scale_fill_manual(values = FillCols )+
+  theme_bw() +
+  xlab("Mean wing size") +
+  ylab("Year coefficient") +
+  ggtitle("Sex response test:\nYear Coefficient ~ Size") -> Fig4a_WO_SplitSex
+
+Fig4a_WO_SplitSex
+```
+
+## Temp and Red List
+```{r eval = FALSE}
+
+PS_NHM_WO_SplitSexSp %>%
+  filter( variable == 'b_Temp' ) %>%
+  brm( mean|mi(sd)  ~  RedListListed ,
+       data = .)  -> bTemp_model_NHM_RedList_WO_SplitSexSp
+
+save(bTemp_model_NHM_RedList_WO_SplitSexSp, file =  '../TopLevelModelFits/bTemp_model_NHM_RedList_WO_SplitSexSp' )
+```
+
+```{r}
+load('../TopLevelModelFits/bTemp_model_NHM_RedList_SPATIAL') # bTemp_model_NHM_RedList 
+load('../TopLevelModelFits/bTemp_model_NHM_RedList_WO_SplitSexSp')
+
+#temperature - original and filtered
+#original
+nobs(bTemp_model_NHM_RedList)
+posterior_summary(bTemp_model_NHM_RedList)["b_RedListListedUnlisted", ]
+
+#filtered
+nobs( bTemp_model_NHM_RedList_WO_SplitSexSp)
+posterior_summary(bTemp_model_NHM_RedList_WO_SplitSexSp)["b_RedListListedUnlisted", ]
+```
+
+## Recreating 4b
+
+```{r}
+
+Trends %>%
+  left_join(ToRemove, by = join_by(variable, Sp)) %>%
+  filter( variable == 'b_Temp' ) %>%
+  mutate( ConfSignifDiff = !is.na(ConfSignifDiff)) -> Fourb_df
+
+
+Fourb_df%>%
+  ggplot(aes(x = RedListListed, y = mean)) +
+  geom_boxplot( data = filter(Fourb_df,  !ConfSignifDiff)) +
+  geom_point(aes(col = Family, fill = Family, shape =ConfSignifDiff),
+             position = position_jitter(width = 0.1)) +
+  theme_bw() +
+  scale_shape_manual(values = c( 21,4), name = 'Confident Difference\nBetween Sexes')+
+  scale_colour_manual(values = LineCols )+
+  scale_fill_manual(values = FillCols )+
+  xlab("Red List status") +
+  ylab("Temperature coefficient") +
+  ggtitle("Sex response test:\nTemperature Coefficient ~ Red List") -> Fig4b_WO_SplitSex
+Fig4b_WO_SplitSex
+```
+
+### Saving Figure
+
+```{r}
+Joint4 <- plot_grid(Fig4a_WO_SplitSex+guides(colour = 'none', shape = 'none', fill = 'none'),
+                    Fig4b_WO_SplitSex, nrow = 1 )
+ggsave(Joint4,  filename = '../figs/Fig4_wosplitsex.png' , height = 5, width = 8)
+
+```
+
+
+# Session Info
+
+```{r}
+sessionInfo()
+```

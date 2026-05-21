@@ -1,10 +1,12 @@
 % Options for packages loaded elsewhere
 \PassOptionsToPackage{unicode}{hyperref}
 \PassOptionsToPackage{hyphens}{url}
-%
 \documentclass[
 ]{article}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
 \usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
 \usepackage{iftex}
 \ifPDFTeX
   \usepackage[T1]{fontenc}
@@ -35,8 +37,6 @@
 }{% if KOMA class
   \KOMAoptions{parskip=half}}
 \makeatother
-\usepackage{xcolor}
-\usepackage[margin=1in]{geometry}
 \usepackage{color}
 \usepackage{fancyvrb}
 \newcommand{\VerbBar}{|}
@@ -78,6 +78,7 @@
 \newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
 \newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
 \usepackage{longtable,booktabs,array}
+\newcounter{none} % for unnumbered tables
 \usepackage{calc} % for calculating minipage widths
 % Correct order of tables after \paragraph or \subparagraph
 \usepackage{etoolbox}
@@ -105,7 +106,6 @@
 \setlength{\emergencystretch}{3em} % prevent overfull lines
 \providecommand{\tightlist}{%
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
-\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
 \usepackage{bookmark}
 \IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
 \urlstyle{same}
@@ -133,9 +133,9 @@
 \NormalTok{          maximum\_plausible,}
 \NormalTok{          minimum\_plausible)}
 
-\NormalTok{NHM\_ForFitting }\OtherTok{\textless{}{-}} \FunctionTok{read\_csv}\NormalTok{(  }\StringTok{\textquotesingle{}../data/NHM/NHM\_for\_models\_monthly.csv\textquotesingle{}}\NormalTok{)}\SpecialCharTok{\%\textgreater{}\%}
+\NormalTok{NHM\_ForFitting }\OtherTok{\textless{}{-}} \FunctionTok{read\_csv}\NormalTok{(  }\StringTok{\textquotesingle{}../data/NHM\_for\_models\_monthly.csv\textquotesingle{}}\NormalTok{)}\SpecialCharTok{\%\textgreater{}\%}
   \FunctionTok{left\_join}\NormalTok{(Species\_info)}
-\NormalTok{OUM\_ForFitting }\OtherTok{\textless{}{-}} \FunctionTok{read\_csv}\NormalTok{(  }\StringTok{\textquotesingle{}../data/OUMNH/OUMNH\_for\_models\_monthly.csv\textquotesingle{}}\NormalTok{)}
+\NormalTok{OUM\_ForFitting }\OtherTok{\textless{}{-}} \FunctionTok{read\_csv}\NormalTok{(  }\StringTok{\textquotesingle{}../data/OUMNH\_for\_models\_monthly.csv\textquotesingle{}}\NormalTok{)}
 \NormalTok{SpeciesToInclude}\OtherTok{\textless{}{-}}   \FunctionTok{unique}\NormalTok{(}\FunctionTok{read\_csv}\NormalTok{(}\StringTok{\textquotesingle{}../statsresults/NHM\_Posterior\_Summaries\_M1.csv\textquotesingle{}}\NormalTok{)}\SpecialCharTok{$}\NormalTok{Sp)}
 
 \NormalTok{UKRedList }\OtherTok{\textless{}{-}} \FunctionTok{read\_csv}\NormalTok{(}\StringTok{\textquotesingle{}../data/ButterflyRedlistUK.csv\textquotesingle{}}\NormalTok{)}
@@ -145,7 +145,7 @@
 
 \section{Making Table 1}\label{making-table-1}
 
-Table summarising each species. Might end up in SI
+Table summarising each species. SI Table 1
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -222,6 +222,7 @@ Table summarising each species. Might end up in SI
 ## Joining with `by = join_by(`Taxon name`)`
 \end{verbatim}
 
+{\def\LTcaptype{none} % do not increment counter
 \begin{longtable}[]{@{}
   >{\raggedright\arraybackslash}p{(\linewidth - 18\tabcolsep) * \real{0.1623}}
   >{\raggedright\arraybackslash}p{(\linewidth - 18\tabcolsep) * \real{0.2078}}
@@ -364,5 +365,146 @@ Univoltine & May & Not Listed \\
 Thymelicus sylvestris & Small skipper & Hesperiidae & G & G & 918 & 98 &
 Univoltine & May & Not Listed \\
 \end{longtable}
+}
+
+\section{Making Table 2}\label{making-table-2}
+
+Table of Year Coefficients vs Red listing
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{PS\_NHM}\OtherTok{\textless{}{-}} \FunctionTok{read\_csv}\NormalTok{(}\StringTok{\textquotesingle{}../statsresults/NHM\_Posterior\_Summaries\_Spatial.csv\textquotesingle{}}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Rows: 9947 Columns: 10
+## -- Column specification --------------------------------------------------------
+## Delimiter: ","
+## chr (2): variable, Sp
+## dbl (8): mean, median, sd, mad, q5, q95, q16.7, q83.3
+## 
+## i Use `spec()` to retrieve the full column specification for this data.
+## i Specify the column types or set `show_col_types = FALSE` to quiet this message.
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{UKRedList }\OtherTok{\textless{}{-}} \FunctionTok{read\_csv}\NormalTok{(}\StringTok{\textquotesingle{}../data/ButterflyRedlistUK.csv\textquotesingle{}}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Rows: 33 Columns: 3
+## -- Column specification --------------------------------------------------------
+## Delimiter: ","
+## chr (3): EnglishName, Species, GB Red List category
+## 
+## i Use `spec()` to retrieve the full column specification for this data.
+## i Specify the column types or set `show_col_types = FALSE` to quiet this message.
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{PS\_NHM }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{left\_join}\NormalTok{(UKRedList, }\AttributeTok{by =}\FunctionTok{c}\NormalTok{( }\StringTok{\textquotesingle{}Sp\textquotesingle{}}\OtherTok{=}\StringTok{\textquotesingle{}Species\textquotesingle{}}\NormalTok{) ) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}\AttributeTok{RedListListed =} \FunctionTok{ifelse}\NormalTok{(}\FunctionTok{is.na}\NormalTok{( }\StringTok{\textasciigrave{}}\AttributeTok{GB Red List category}\StringTok{\textasciigrave{}}\NormalTok{),}
+                                \StringTok{\textquotesingle{}Unlisted\textquotesingle{}}\NormalTok{,}
+                                \StringTok{\textquotesingle{}Listed\textquotesingle{}}\NormalTok{)) }\SpecialCharTok{\%\textgreater{}\%} 
+
+  \FunctionTok{filter}\NormalTok{( variable }\SpecialCharTok{==} \StringTok{\textquotesingle{}b\_Temp\textquotesingle{}}\NormalTok{ ) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{arrange}\NormalTok{(  RedListListed,mean)}\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{select}\NormalTok{(}\AttributeTok{Species =}\NormalTok{ Sp, }\AttributeTok{RedListing =}\NormalTok{ RedListListed,}
+         \StringTok{\textasciigrave{}}\AttributeTok{GB Red List category}\StringTok{\textasciigrave{}}\NormalTok{, mean ,q5,q95) }\SpecialCharTok{\%\textgreater{}\%}
+\NormalTok{  knitr}\SpecialCharTok{::}\FunctionTok{kable}\NormalTok{(}\AttributeTok{digits =} \DecValTok{4}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.3086}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1358}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.2593}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.0988}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.0988}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.0988}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Species
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+RedListing
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+GB Red List category
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+mean
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+q5
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+q95
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Thecla betulae & Listed & Vulnerable & -0.0080 & -0.0148 & -0.0011 \\
+Nymphalis polychloros & Listed & Regionally Extinct & -0.0066 & -0.0177
+& 0.0046 \\
+Leptidea sinapis & Listed & Endangered & -0.0045 & -0.0072 & -0.0020 \\
+Coenonympha tullia & Listed & Endangered & -0.0038 & -0.0058 &
+-0.0017 \\
+Pyrgus malvae & Listed & Vulnerable & -0.0033 & -0.0052 & -0.0012 \\
+Hamearis lucina & Listed & Vulnerable & -0.0019 & -0.0040 & 0.0001 \\
+Boloria selene & Listed & Vulnerable & -0.0010 & -0.0034 & 0.0013 \\
+Polyommatus bellargus & Listed & Vulnerable & -0.0009 & -0.0018 &
+0.0001 \\
+Cupido minimus & Listed & Near Threatened & -0.0005 & -0.0033 &
+0.0023 \\
+Satyrium pruni & Listed & Endangered & -0.0002 & -0.0035 & 0.0030 \\
+Polyommatus coridon & Listed & Vulnerable & 0.0005 & -0.0003 & 0.0014 \\
+Coenonympha pamphilus & Listed & Vulnerable & 0.0009 & -0.0009 &
+0.0028 \\
+Boloria euphrosyne & Listed & Vulnerable & 0.0011 & -0.0007 & 0.0028 \\
+Lasiommata megera & Listed & Endangered & 0.0011 & -0.0023 & 0.0045 \\
+Plebejus argus & Listed & Vulnerable & 0.0013 & -0.0003 & 0.0029 \\
+Papilio machaon & Listed & Vulnerable & 0.0018 & -0.0061 & 0.0098 \\
+Satyrium w-album & Listed & Vulnerable & 0.0029 & -0.0024 & 0.0081 \\
+Hipparchia semele & Listed & Endangered & 0.0030 & 0.0001 & 0.0059 \\
+Melitaea athalia & Listed & Endangered & 0.0040 & 0.0019 & 0.0062 \\
+Limenitis camilla & Listed & Vulnerable & 0.0048 & 0.0017 & 0.0078 \\
+Melitaea cinxia & Listed & Endangered & 0.0049 & 0.0009 & 0.0091 \\
+Euphydryas aurinia & Listed & Vulnerable & 0.0050 & 0.0014 & 0.0085 \\
+Speyeria aglaja & Listed & Near Threatened & 0.0051 & 0.0024 & 0.0077 \\
+Thymelicus acteon & Listed & Near Threatened & 0.0076 & 0.0029 &
+0.0123 \\
+Hesperia comma & Listed & Vulnerable & 0.0088 & 0.0054 & 0.0122 \\
+Fabriciana adippe & Listed & Endangered & 0.0108 & 0.0083 & 0.0134 \\
+Apatura iris & Unlisted & NA & -0.0141 & -0.0207 & -0.0076 \\
+Celastrina argiolus & Unlisted & NA & -0.0103 & -0.0179 & -0.0028 \\
+Polygonia c-album & Unlisted & NA & -0.0059 & -0.0099 & -0.0018 \\
+Pararge aegeria & Unlisted & NA & -0.0049 & -0.0087 & -0.0012 \\
+Pieris rapae & Unlisted & NA & -0.0045 & -0.0086 & -0.0004 \\
+Argynnis paphia & Unlisted & NA & -0.0041 & -0.0066 & -0.0017 \\
+Thymelicus lineola & Unlisted & NA & -0.0035 & -0.0070 & 0.0000 \\
+Gonepteryx rhamni & Unlisted & NA & -0.0034 & -0.0065 & -0.0003 \\
+Aricia agestis & Unlisted & NA & -0.0031 & -0.0061 & -0.0002 \\
+Callophrys rubi & Unlisted & NA & -0.0030 & -0.0063 & 0.0003 \\
+Aphantopus hyperantus & Unlisted & NA & -0.0028 & -0.0051 & -0.0005 \\
+Anthocharis cardamines & Unlisted & NA & -0.0020 & -0.0045 & 0.0006 \\
+Pieris napi & Unlisted & NA & -0.0013 & -0.0042 & 0.0016 \\
+Lycaena phlaeas & Unlisted & NA & -0.0010 & -0.0033 & 0.0013 \\
+Melanargia galathea & Unlisted & NA & -0.0008 & -0.0037 & 0.0022 \\
+Aglais urticae & Unlisted & NA & -0.0006 & -0.0047 & 0.0034 \\
+Maniola jurtina & Unlisted & NA & 0.0005 & -0.0011 & 0.0022 \\
+Thymelicus sylvestris & Unlisted & NA & 0.0006 & -0.0019 & 0.0031 \\
+Carterocephalus palaemon & Unlisted & NA & 0.0008 & -0.0022 & 0.0038 \\
+Pyronia tithonus & Unlisted & NA & 0.0010 & -0.0009 & 0.0029 \\
+Polyommatus icarus & Unlisted & NA & 0.0015 & 0.0000 & 0.0030 \\
+Favonius quercus & Unlisted & NA & 0.0018 & -0.0026 & 0.0063 \\
+Aglais io & Unlisted & NA & 0.0027 & -0.0041 & 0.0095 \\
+Erynnis tages & Unlisted & NA & 0.0033 & 0.0002 & 0.0064 \\
+Ochlodes sylvanus & Unlisted & NA & 0.0037 & 0.0011 & 0.0064 \\
+Pieris brassicae & Unlisted & NA & 0.0043 & 0.0001 & 0.0086 \\
+\end{longtable}
+}
 
 \end{document}

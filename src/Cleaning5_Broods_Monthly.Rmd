@@ -130,6 +130,6 @@ OUMNH_for_models <- OUMNH_data_temps %>%
 # View and save
 ```{r}
 OUMNH_for_models
-write_csv(OUMNH_for_models, "../data/OUMNH/OUMNH_for_models_monthly.csv")
+write_csv(OUMNH_for_models, "../data/OUMNH_for_models_monthly.csv")
 ```
 
